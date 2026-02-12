@@ -36,7 +36,7 @@ async def predict(
     entities = await nlp_service.extract_entities(
         model_name=predict_request.model, text=predict_request.text
     )
-    return JSONResponse(content=entities, status_code=200)
+    return JSONResponse(content=entities.model_dump(), status_code=200)
 
 
 @router.delete("/models/{model_name}")
@@ -55,4 +55,8 @@ async def list_predictions(
     nlp_service: Annotated[NLPService, Depends(get_nlp_service)],
 ) -> JSONResponse:
     history = await nlp_service.history()
-    return JSONResponse(content={"history": history}, status_code=200)
+    content = history.model_dump(exclude={"history": {"__all__": {"id"}}}, mode="json")
+    return JSONResponse(
+        content=content,
+        status_code=200,
+    )

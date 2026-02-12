@@ -1,11 +1,13 @@
 from asyncio import Lock
 from datetime import datetime, timezone
 
+from fastapi.exceptions import HTTPException
 from spacy import Language, load
 from spacy.cli import download
 from spacy.util import is_package
 
 from core.settings import AppSettings
+from models import HistoryResponse, PredicitionEntities, PredictionModel
 from repositories import BaseRepository
 
 from .base import BaseNLPService
@@ -19,23 +21,23 @@ class NLPService(BaseNLPService):
         self.models: dict[str, Language] = {}
         self._lock = Lock()
 
-    async def extract_entities(self, model_name: str, text: str) -> dict:
+    async def extract_entities(self, model_name: str, text: str) -> PredicitionEntities:
         nlp = await self.load_model(model_name=model_name)
         doc = nlp(text)
-        entities = []
+        entities = {}
         for ent in doc.ents:
-            entities.append({"text": ent.text, "label": ent.label_})
-
+            entities[ent.label_.lower()] = ent.text
+        pred = PredicitionEntities.model_validate(entities)  # type: ignore
         await self.repository.write(
             collection=self.predictions_collection,
             data={
                 "model": model_name,
                 "text": text,
-                "entities": entities,
+                "entities": pred.model_dump(),
                 "timestamp": datetime.now(timezone.utc),
             },
         )
-        return {"entities": entities}
+        return pred
 
     async def add_model(self, model_name: str) -> None:
         if not await self.repository.find(
@@ -46,7 +48,10 @@ class NLPService(BaseNLPService):
             )
             await self.load_model(model_name=model_name)
         else:
-            raise ValueError(f"Model '{model_name}' already exists in repository.")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Model '{model_name}' already exists in repository.",
+            )
 
     async def load_model(self, model_name: str) -> Language:
         if not await self.repository.find(
@@ -55,8 +60,9 @@ class NLPService(BaseNLPService):
             # Remove do cache se o modelo não estiver mais no repositório
             if model_name in self.models:
                 del self.models[model_name]
-            raise ValueError(
-                f"Model '{model_name}' not found in repository. Please add it first."
+            raise HTTPException(
+                status_code=404,
+                detail=f"Model '{model_name}' not found in repository. Please add it first.",
             )
 
         if model_name in self.models:
@@ -65,7 +71,14 @@ class NLPService(BaseNLPService):
         async with self._lock:
             if model_name not in self.models:
                 if not is_package(model_name):
-                    download(model_name)
+                    try:
+                        download(model_name)
+                    except SystemExit as e:
+                        await self.delete_model(model_name=model_name)
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Failed to download model '{model_name}': {str(e)}",
+                        )
                 self.models[model_name] = load(model_name)
                 # Desabilita pipes desnecessários para otimizar performance
                 for pipe_name in list(self.models[model_name].pipe_names):
@@ -89,9 +102,19 @@ class NLPService(BaseNLPService):
                 del self.models[model_name]
 
         else:
-            raise ValueError(f"Model '{model_name}' not found in repository.")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Model '{model_name}' not found in repository.",
+            )
 
-    async def history(self) -> list[dict]:
-        return await self.repository.list(
-            collection=self.predictions_collection, query={}
+    async def history(self) -> HistoryResponse:
+        return HistoryResponse.model_validate(
+            {
+                "history": [
+                    PredictionModel.model_validate(prediction)
+                    for prediction in await self.repository.list(
+                        collection=self.predictions_collection, query={}
+                    )
+                ]
+            }
         )
