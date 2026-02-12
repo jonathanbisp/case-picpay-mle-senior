@@ -37,7 +37,7 @@ def get_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(LogMiddleware)
-    app.add_exception_handler(ValueError, value_error_handler)
+    app.add_exception_handler(ValueError, value_error_handler)  # type: ignore
 
     return app
 
