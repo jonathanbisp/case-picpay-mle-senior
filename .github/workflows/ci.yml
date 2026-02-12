@@ -39,7 +39,7 @@ jobs:
             ${{ runner.os }}-poetry-
 
       - name: Install dependencies
-        run: poetry install --with dev --with test
+        run: poetry install --with dev --with test --no-root
 
       - name: Lint with Ruff
         run: poetry run ruff check src/ tests/
