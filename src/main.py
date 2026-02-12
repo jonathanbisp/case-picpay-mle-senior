@@ -5,7 +5,7 @@ from pymongo import MongoClient
 app = FastAPI(title="PicPay Case API")
 
 mongo_uri = os.getenv("MONGO_URI")
-client = MongoClient(mongo_uri) # type: ignore
+client = MongoClient(mongo_uri)  # type: ignore
 db = client.get_database()
 
 
