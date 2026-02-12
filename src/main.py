@@ -1,19 +1,43 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
-import os
-from pymongo import MongoClient
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="PicPay Case API")
-
-mongo_uri = os.getenv("MONGO_URI")
-client = MongoClient(mongo_uri)  # type: ignore
-db = client.get_database()
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+from core.logging import setup_logging
+from core.settings import AppSettings, get_settings
+from middlewares import LogMiddleware, TraceIdMiddleware
+from repositories import shutdown_repository, startup_repository
+from routing import routes
 
 
-@app.get("/items")
-def list_items():
-    return {"count": db.items.count_documents({})}
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings: AppSettings = get_settings()
+    # Startup actions
+    await startup_repository(app, settings)
+
+    yield
+
+    # Shutdown actions
+    await shutdown_repository(app)
+
+
+def get_app() -> FastAPI:
+    setup_logging()
+    app = FastAPI(title="PicPay Case API", lifespan=lifespan)
+
+    app.include_router(routes)
+    app.add_middleware(TraceIdMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allows all origins
+        allow_credentials=True,
+        allow_methods=["*"],  # Allows all methods
+        allow_headers=["*"],  # Allows all headers
+    )
+    app.add_middleware(LogMiddleware)
+
+    return app
+
+
+app = get_app()
