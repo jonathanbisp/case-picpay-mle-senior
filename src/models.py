@@ -26,7 +26,7 @@ class PredictionModel(BaseModel):
     entities: PredicitionEntities
     timestamp: datetime
 
-    model_config: ConfigDict = ConfigDict(arbitrary_types_allowed=True)
+    model_config: ConfigDict = ConfigDict(arbitrary_types_allowed=True)  # type: ignore
 
 
 class HistoryResponse(BaseModel):

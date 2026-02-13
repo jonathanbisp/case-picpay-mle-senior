@@ -35,7 +35,6 @@ test = [
     "mongomock-motor (>=0.0.36,<0.0.37)",
     "pytest-cov (>=7.0.0,<8.0.0)",
     "pytest-asyncio (>=1.3.0,<2.0.0)",
-    "testcontainers[mongodb] (>=4.14.1,<5.0.0)"
 ]
 dev = [
     "ipykernel (>=7.2.0,<8.0.0)"

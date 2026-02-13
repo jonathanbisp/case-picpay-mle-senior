@@ -8,7 +8,7 @@ from repositories.mongo import MongoRepository
 
 async def startup_repository(app: FastAPI, settings: AppSettings) -> None:
     client = AsyncMongoClient(settings.MONGO_URI)
-    app.state.repository = MongoRepository(client=client, settings=settings)
+    app.state.repository = MongoRepository(client=client, settings=settings)  # type: ignore
 
 
 async def shutdown_repository(app: FastAPI) -> None:
