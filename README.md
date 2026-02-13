@@ -152,15 +152,15 @@ Resposta esperada:
 ### LoadModelRequest
 ```python
 {
-  "model": "pt_core_news_sm"
+  "model": "en_core_web_sm"
 }
 ```
 
 ### PredictRequest
 ```python
 {
-  "model": "pt_core_news_sm",
-  "text": "Quero transferir R$ 1000 para João em 25 de janeiro"
+  "model": "en_core_web_sm",
+  "text": "Can you send $45 to Michael on June 3?"
 }
 ```
 
@@ -168,12 +168,12 @@ Resposta esperada:
 ```python
 {
   "_id": ObjectId,
-  "model": "pt_core_news_sm",
-  "text": "Quero transferir R$ 1000 para João em 25 de janeiro",
+  "model": "en_core_web_sm",
+  "text": "Can you send $45 to Michael on June 3?",
   "entities": {
-    "money": 1000.0,
-    "person": "João",
-    "date": "25 de janeiro"
+    "money": 45,
+    "person": "Michael",
+    "date": "June 3"
   },
   "timestamp": "2026-02-13T10:30:00"
 }

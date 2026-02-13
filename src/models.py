@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from bson import ObjectId
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class LoadModelRequest(BaseModel):
@@ -14,8 +14,12 @@ class PredictRequest(BaseModel):
 
 
 class PredicitionEntities(BaseModel):
-    money: float | None = Field(default=None, alias="money")
-    person: str | None = Field(default=None, alias="person")
+    money: float | None = Field(
+        default=None, validation_alias=AliasChoices("money", "amount")
+    )
+    person: str | None = Field(
+        default=None, validation_alias=AliasChoices("person", "per")
+    )
     date: str | None = Field(default=None, alias="date")
 
 
