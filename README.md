@@ -43,40 +43,28 @@ Uma **arquitetura escalável baseada em FastAPI** com integração de **processa
 ├── Case Machine Learning Engineer Sênior.ipynb  # Etapa 1: Pipeline de ingestão
 ├── src/                            # Etapa 2: API REST
 │   ├── main.py                     # Aplicação FastAPI principal
-│   ├── gateways/                   # Interfaces de comunicação externa
-│   ├── models/                     # Modelos de dados (Pydantic)
-│   ├── services/                   # Lógica de negócio
-│   ├── repository/                 # Camada de acesso a dados
-│   │   └── mongo.py                # Operações MongoDB
-│   └── settings/                   # Configurações da aplicação
+│   ├── models.py                   # Modelos Pydantic (LoadModelRequest, PredictRequest, etc)
+│   ├── core/                       # Configurações centrais
+│   ├── middlewares/                # Middlewares da aplicação
+│   ├── routing/                    # Rotas e endpoints
+│   ├── services/                   # Lógica de negócio e NLP
+│   ├── repositories/               # Camada de acesso a dados (MongoDB)
+│   └── __pycache__/                # Cache Python
 ├── tests/                          # Testes automatizados
+│   ├── unit/                       # Testes unitários
+│   ├── controller/                 # Testes de controller/endpoints
+│   ├── mock/                       # Dados e fixtures para testes
+│   ├── conftest.py                 # Configuração pytest
+│   └── __init__.py
+├── .github/workflows/
+│   └── ci.yml                      # Pipeline CI/CD (Lint, Format, Type Check, Tests)
 ├── nginx/
 │   └── nginx.conf                  # Configuração do reverse proxy
 ├── docker-compose.yml              # Orquestração de containers
 ├── Dockerfile                      # Build da imagem Docker
 ├── requirements.txt                # Dependências Python
-└── pyproject.toml                  # Metadados do projeto
-```
-
-## 🔗 Fluxo de Dados
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  ETAPA 1: Pipeline de Ingestão (Notebook)               │
-├─────────────────────────────────────────────────────────┤
-│ PokeAPI → Extração Assíncrona → Validação (Pydantic)    │
-│         ↓                                               │
-│   Processamento em Batches → Delta Lake (Databricks)    │
-└─────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────┐
-│  ETAPA 2: API REST com Load Balancing                   │
-├─────────────────────────────────────────────────────────┤
-│  Nginx Load Balancer → [API 1, API 2, API 3, ...]       │
-│     ↓                                                   │
-│  FastAPI Services → Validação de Requisições            │
-│     ↓                                                   │
-│  Spacy + MongoDB                                        │
-└─────────────────────────────────────────────────────────┘
+├── pyproject.toml                  # Metadados do projeto
+└── README.md                       # Este arquivo
 ```
 
 ## 🚀 Etapa 1: Pipeline de Ingestão de Dados
@@ -155,7 +143,41 @@ Resposta esperada:
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
 | GET | `/health` | Verifica o status da aplicação |
-| GET | `/items` | Lista items persistidos no MongoDB |
+| POST | `/predict` | Realiza predição de entidades usando modelo Spacy |
+| GET | `/history` | Retorna histórico de predições do MongoDB |
+| POST | `/load` | Carrega um modelo Spacy específico |
+
+## 📊 Modelos de Dados
+
+### LoadModelRequest
+```python
+{
+  "model": "en_core_web_sm"
+}
+```
+
+### PredictRequest
+```python
+{
+  "model": "en_core_web_sm",
+  "text": "Can you send $45 to Michael on June 3?"
+}
+```
+
+### PredictionModel (Resposta)
+```python
+{
+  "_id": ObjectId,
+  "model": "en_core_web_sm",
+  "text": "Can you send $45 to Michael on June 3?",
+  "entities": {
+    "money": 45,
+    "person": "Michael",
+    "date": "June 3"
+  },
+  "timestamp": "2026-02-13T10:30:00"
+}
+```
 
 ## ⚙️ Configuração
 
@@ -174,6 +196,19 @@ Para executar os testes:
 ```bash
 docker compose exec api pytest tests/
 ```
+
+Ou localmente com Poetry:
+
+```bash
+poetry run pytest tests/ -v
+```
+
+### Estrutura de Testes
+
+- **tests/unit/**: Testes unitários de serviços e lógica
+- **tests/controller/**: Testes de endpoints e integração HTTP
+- **tests/mock/**: Dados fictícios e fixtures para testes
+- **tests/conftest.py**: Configuração e fixtures globais do pytest
 
 Dependências de teste:
 - pytest
@@ -233,11 +268,12 @@ docker compose down -v
 
 ### Estrutura Recomendada Para Novas Features
 
-1. **Models** (`src/models/`): Define dataclasses/Pydantic models
-2. **Services** (`src/services/`): Implementa lógica de negócio
-3. **Repository** (`src/repository/`): Acesso a dados (MongoDB)
-4. **Gateways** (`src/gateways/`): Integrações externas
-5. **Main** (`src/main.py`): Registra rotas FastAPI
+1. **Models** (`src/models.py`): Define dataclasses/Pydantic models centralizados
+2. **Services** (`src/services/`): Implementa lógica de negócio e processamento NLP
+3. **Repositories** (`src/repositories/`): Acesso a dados (MongoDB)
+4. **Routing** (`src/routing/`): Define endpoints e rotas FastAPI
+5. **Core** (`src/core/`): Configurações e inicializações centrais
+6. **Middlewares** (`src/middlewares/`): Interceptadores de requisições
 
 ### Dependências de Desenvolvimento
 
@@ -271,24 +307,17 @@ Isso irá instalar:
 poetry run fastapi run src/main.py
 
 # Executar testes
-poetry run pytest tests/
+poetry run pytest tests/ -v --cov
 
 # Executar linting
 poetry run ruff check src/
 
+# Executar formatação
+poetry run ruff format src/
+
 # Verificar tipos com mypy
 poetry run mypy src/
 ```
-
-#### 4. Ativar o Ambiente Virtual
-
-Para trabalhar interativamente no ambiente Poetry:
-
-```bash
-poetry shell
-```
-
-Após isso, você pode executar comandos sem o prefixo `poetry run`.
 
 ### CI/CD - GitHub Actions
 
@@ -301,7 +330,7 @@ Este projeto possui um **pipeline de integração contínua** automatizado que e
 
 O workflow é disparado automaticamente em:
 - ✅ Push para `main` ou `develop`
-- ✅ Pull Requests para `main` ou `develop`
+- ✅ Pull Requests para `main`
 
 📄 **Configuração**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 

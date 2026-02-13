@@ -3,7 +3,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from core.exceptions import value_error_handler
 from core.logging import setup_logging
 from core.settings import AppSettings, get_settings
 from middlewares import LogMiddleware, TraceIdMiddleware
@@ -37,7 +36,6 @@ def get_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(LogMiddleware)
-    app.add_exception_handler(ValueError, value_error_handler)  # type: ignore
 
     return app
 

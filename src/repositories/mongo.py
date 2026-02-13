@@ -9,8 +9,8 @@ from .base import BaseRepository
 
 
 class MongoRepository(BaseRepository):
-    def __init__(self, settings: AppSettings) -> None:
-        self.client: AsyncMongoClient = AsyncMongoClient(settings.MONGO_URI)  # type: ignore
+    def __init__(self, client: AsyncMongoClient, settings: AppSettings) -> None:
+        self.client: AsyncMongoClient = client
         self.database_name = settings.MONGO_DATABASE_NAME
 
     def collection(self, collection_name: str) -> AsyncCollection:
@@ -34,11 +34,8 @@ class MongoRepository(BaseRepository):
         return await self.collection(collection).find_one_and_delete(query)
 
     async def list(self, collection: str, query: dict) -> list[dict]:
-        async with self.collection(collection).find(query) as cursor:
-            return [doc async for doc in cursor]
-
-    async def close(self):
-        await self.client.aclose()
+        cursor = self.collection(collection).find(query)
+        return [doc async for doc in cursor]
 
     async def is_healthy(self) -> bool:
         try:
@@ -46,3 +43,6 @@ class MongoRepository(BaseRepository):
             return True
         except Exception:
             return False
+
+    async def close(self):
+        await self.client.aclose()
