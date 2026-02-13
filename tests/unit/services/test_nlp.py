@@ -53,9 +53,11 @@ async def test_load_model(mocked_nlp_service: NLPService) -> None:
     mocked_nlp_service.repository.find = AsyncMock(return_value={"model": "test_model"})
     model = MagicMock(pipe_names=["ner", "textcat"])
     mocked_nlp_service.models = {}
-    with patch("services.nlp.is_package", return_value=False), patch(
-        "services.nlp.download", return_value=None
-    ), patch("services.nlp.load", return_value=model):
+    with (
+        patch("services.nlp.is_package", return_value=False),
+        patch("services.nlp.download", return_value=None),
+        patch("services.nlp.load", return_value=model),
+    ):
         result = await mocked_nlp_service.load_model(model_name="test_model")
         assert result == model
 
@@ -80,8 +82,9 @@ async def test_load_model_not_found(mocked_nlp_service: NLPService) -> None:
 async def test_load_model_download_failure(mocked_nlp_service: NLPService) -> None:
     mocked_nlp_service.repository.find = AsyncMock(return_value={"model": "test_model"})
     mocked_nlp_service.models = {}
-    with patch("services.nlp.is_package", return_value=False), patch(
-        "services.nlp.download", side_effect=SystemExit("Download failed")
+    with (
+        patch("services.nlp.is_package", return_value=False),
+        patch("services.nlp.download", side_effect=SystemExit("Download failed")),
     ):
         with pytest.raises(
             HTTPException,

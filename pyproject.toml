@@ -46,6 +46,11 @@ exclude = [
     "*.ipynb",
 ]
 
+[tool.ruff.lint]
+ignore = [
+    "F403",
+]
+
 [tool.pytest.ini_options]
 pythonpath = [
   ".",
